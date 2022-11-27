@@ -1,11 +1,13 @@
 package com.example.hackersproject;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
-
-
+import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 
+import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Bundle;
 
@@ -69,8 +71,28 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         textView = findViewById(R.id.textView);
         btn1 = findViewById(R.id.button);
         btn2 = findViewById(R.id.button3);
+        //判断权限
 
+        //判断权限
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            //请求权限
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        } else {
+            //有权限
+            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            //获取所有可用的位置提供器
+            List<String> providerList = locationManager.getProviders(true);
+            if (providerList.contains(LocationManager.NETWORK_PROVIDER)) {
+                provider = LocationManager.NETWORK_PROVIDER;
+            } else if (providerList.contains(LocationManager.GPS_PROVIDER)) {
+                provider = LocationManager.GPS_PROVIDER;
+            } else {
+                //当没有可用的位置提供器时，弹出Toast提示用户
+                Toast.makeText(this, "No Location provider to use", Toast.LENGTH_SHORT).show();
 
+            }
+        }
         initlist();
         try {
             AMapLocationClient.updatePrivacyShow(this, true, true);
@@ -86,7 +108,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 Toast.makeText(getApplicationContext(), "正在获取请稍后😁", Toast.LENGTH_LONG).show(); // 显示提示信息
                 sendRequestWithHttpURLConnectionNorth();
                 sendRequestWithHttpURLConnectionSouth();
-
             }
         });
     }
@@ -148,6 +169,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         new Thread(new Runnable() {
             @Override
             public void run() {
+                chargers=new ArrayList<>();
                 HttpURLConnection connection = null;
                 BufferedReader reader = null;
                 List<String> urls=new ArrayList<>();

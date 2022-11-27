@@ -25,9 +25,7 @@
         android:theme="@style/Theme.HackersProject"
         android:usesCleartextTraffic="true"
         tools:targetApi="31" >
-        <meta-data android:name="com.amap.api.v2.apikey" android:value="4c9f6f7bf0734a4a01e02a799c038391">
-              //开发者申请的key
-        </meta-data>
+        <meta-data android:name="com.amap.api.v2.apikey" android:value="4c9f6f7bf0734a4a01e02a799c038391"></meta-data>
         <!--声明定位service-->
         <service android:name="com.amap.api.location.APSService"></service>
         <activity

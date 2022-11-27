@@ -63,7 +63,7 @@ public class mapActivity extends AppCompatActivity implements LocationSource, AM
 
         //aMap.setTrafficEnabled(true);// 显示实时交通状况
         //地图模式可选类型：MAP_TYPE_NORMAL,MAP_TYPE_SATELLITE,MAP_TYPE_NIGHT
-        aMap.setMapType(AMap.MAP_TYPE_NORMAL);// 卫星地图模式
+        aMap.setMapType(AMap.MAP_TYPE_NORMAL);
         initLoc();
     }
 
@@ -209,7 +209,7 @@ public class mapActivity extends AppCompatActivity implements LocationSource, AM
         super.onSaveInstanceState(outState);
         mapView.onSaveInstanceState(outState);
     }
- 
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
