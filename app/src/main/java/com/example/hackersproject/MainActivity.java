@@ -50,12 +50,13 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
     public List<Charger> chargers=new ArrayList<>();
     private List<double[]> locations=new ArrayList<>();
     private void initlist(){
-        double baselo=120.685713;
-        double basela=36.374363;
+        double baselo=120.685846;
+        double basela=36.374208;
         for(int i=0;i<8;i++){
             if(i==4){
-                baselo=120.685681;
-                basela=36.374991;
+                baselo=120.684847;
+                basela=36.374924;
+
             }
             double[] pos=new double[2];
 
@@ -344,7 +345,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                         S.append("地址:  "+chargers.get(i).name+"\n");
                         S.append("总插口数:  "+chargers.get(i).total+"\n");
                         S.append("剩余插口数:   "+chargers.get(i).free+"\n");
-                        if(chargers.get(i).distance!=-1)S.append("距离: "+chargers.get(i).distance+" m\n");
+                        if(chargers.get(i).distance!=-1)S.append("距离: "+String.format("%.2f",chargers.get(i).distance)+" m\n");
                         textView.append(S);
                     }
 
