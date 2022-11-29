@@ -236,7 +236,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             charger.name=name;
             charger.latitude=locations.get(n)[1];
             charger.longitude=locations.get(n)[0];
-            new LatLng(39.90403, 116.407525);
             charger.distance = AMapUtils.calculateLineDistance(new LatLng(charger.latitude, charger.longitude),new LatLng(Latitude, Longitude));
             list.append("地址:  "+name+"\n");
             list.append("总插口数:  "+stotal+"\n");
