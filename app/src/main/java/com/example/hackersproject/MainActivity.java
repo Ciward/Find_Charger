@@ -201,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                         while ((line = reader.readLine()) != null) {
                             response.append(line);
                         }
-                        System.out.println(response.toString());
+
                         pareNorthJSON(response.toString(),i);
                     }
                 } catch (Exception e) {
@@ -229,16 +229,11 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             JSONObject jsonObject=array1.getJSONObject(0);
             String name=jsonObject.getString("mc");
             String stotal=jsonObject.getString("gls");
-
-
-            StringBuilder list=new StringBuilder();
             Charger charger=new Charger();
             charger.name=name;
             charger.latitude=locations.get(n)[1];
             charger.longitude=locations.get(n)[0];
             charger.distance = AMapUtils.calculateLineDistance(new LatLng(charger.latitude, charger.longitude),new LatLng(Latitude, Longitude));
-            list.append("地址:  "+name+"\n");
-            list.append("总插口数:  "+stotal+"\n");
             int total=Integer.parseInt(stotal);
             charger.total=total;
             int free=total;
@@ -250,21 +245,19 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 };
             }
             charger.free=free;
-            list.append("剩余插口数:  "+free+"\n");
 
-            if(free>0) {
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
 
-                        chargers.add(charger);
-                    }
-                });
-            }
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    chargers.add(charger);
+                }
+            });
+
         }catch (Exception e){
             e.printStackTrace();
-            Toast.makeText(getApplicationContext(), e.toString(), Toast.LENGTH_LONG).show();
+
         }
     }
     private void sendRequestWithHttpURLConnectionSouth() {
@@ -280,7 +273,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                     double longitude=Longitude;
                     double latitude=Latitude;
 
-                    String urlst="https://xlr.xlvren.com/jweb_autocharge/position/listPosition.json?longitude="+longitude+"&latitude="+latitude+"&sid=8Gsomxku5QrL&showProprietary=1";
+                    String urlst="https://xlr.xlvren.com/jweb_autocharge/position/listPosition.json?longitude="+longitude+"&latitude="+latitude+"&sid=YPuZGo0vl6Rw&showProprietary=1";
                     System.out.println(urlst);
                     URL url = new URL(urlst);
 
@@ -333,11 +326,8 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 charger.free= jsoni.getInt("freePile");
                 charger.longitude=jsoni.getDouble("longitude");
                 charger.latitude=jsoni.getDouble("latitude");
-                if(charger.free>0){
-                    chargers.add(charger);
-                }else{
-                    len--;
-                }
+                chargers.add(charger);
+
 
             }
             print();
@@ -347,9 +337,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         }
         this.deactivate();
     }
-    public void sortChargers(){
 
-    }
     public void print(){
         Charger temp;
         for(int i=0;i<chargers.size();i++){
@@ -367,17 +355,21 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             @Override
             public void run() {
                 for(int i = 0; i< chargers.size(); i++){
-                    StringBuilder S=new StringBuilder();
-                    S.append("地址:  "+chargers.get(i).name+"\n");
-                    S.append("总插口数:  "+chargers.get(i).total+"\n");
-                    S.append("剩余插口数:   "+chargers.get(i).free+"\n");
-                    if(chargers.get(i).distance!=-1)S.append("距离: "+String.format("%.2f",chargers.get(i).distance)+" m\n");
-                    textView.append(S);
+                    if(chargers.get(i).free >0) {
+                        StringBuilder S = new StringBuilder();
+                        S.append("地址:  " + chargers.get(i).name + "\n");
+                        S.append("总插口数:  " + chargers.get(i).total + "\n");
+                        S.append("剩余插口数:   " + chargers.get(i).free + "\n");
+                        if (chargers.get(i).distance != -1)
+                            S.append("距离: " + String.format("%.2f", chargers.get(i).distance) + " m\n");
+                        textView.append(S);
+                    }
                 }
 
             }
         });
     }
+
     //激活定位
     @Override
     public void activate(OnLocationChangedListener listener) {

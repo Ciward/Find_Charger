@@ -14,6 +14,7 @@ import com.amap.api.maps2d.CameraUpdateFactory;
 import com.amap.api.maps2d.LocationSource;
 import com.amap.api.maps2d.MapView;
 import com.amap.api.maps2d.UiSettings;
+import com.amap.api.maps2d.model.BitmapDescriptorFactory;
 import com.amap.api.maps2d.model.LatLng;
 import com.amap.api.maps2d.model.MarkerOptions;
 import com.amap.api.maps2d.model.MyLocationStyle;
@@ -103,7 +104,7 @@ public class mapActivity extends AppCompatActivity implements LocationSource, AM
         mLocationClient.startLocation();
     }
 
-    //定位回调函数
+    //定位函数
     @Override
     public void onLocationChanged(AMapLocation amapLocation) {
 
@@ -145,7 +146,7 @@ public class mapActivity extends AppCompatActivity implements LocationSource, AM
                             for (int i = 0; i < chargers.size(); i++) {
                                 aMap.addMarker(getMarkerOptions(chargers.get(i)));
                             }
-                            System.out.println("success");
+
                         }
                     }).start();
 
@@ -171,12 +172,15 @@ public class mapActivity extends AppCompatActivity implements LocationSource, AM
     private MarkerOptions getMarkerOptions(Charger charger) {
         //设置图钉选项
         MarkerOptions options = new MarkerOptions();
-
         //位置
         options.position(new LatLng(charger.latitude,charger.longitude));
-
         //标题
         options.title(charger.name);
+        if(charger.free==0){
+            options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.icon));
+        }else{
+            options.icon(BitmapDescriptorFactory.fromResource(R.mipmap.icob));
+        }
         //子标题
         options.snippet("总插口数："+charger.total+"\n空余数："+charger.free);
         //设置多少帧刷新一次图片资源
@@ -198,9 +202,7 @@ public class mapActivity extends AppCompatActivity implements LocationSource, AM
         mListener = null;
     }
 
-    /**
-     * 方法必须重写
-     */
+
     @Override
     protected void onResume() {
         super.onResume();
