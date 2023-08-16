@@ -160,7 +160,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 chargers=new ArrayList<>();
                 HttpURLConnection connection = null;
                 BufferedReader reader = null;
-                String url_text = serverIp+':'+serverPort+serverIndex;
+                String url_text = "http://"+serverIp+':'+serverPort+serverIndex;
                 try {
 
                     System.out.println(url_text);
@@ -182,7 +182,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                     pareJSON(response.toString());
 
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    textView.setText(e.toString());
                 } finally {
                     if (reader != null) {
                         try {
@@ -198,98 +198,13 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             }
         }).start();
     }
-    //解析 1
-    private void pareJSON(String jsonData){
-        try {
-            //JSONObject jsonObject=new JSONObject(jsonData);
-            JSONArray array1=new JSONArray(jsonData);
-            JSONObject jsonObject=array1.getJSONObject(0);
-            String name=jsonObject.getString("mc");
-            String stotal=jsonObject.getString("gls");
-            Charger charger=new Charger();
-            charger.name=name;
-            charger.latitude=locations.get(n)[1];
-            charger.longitude=locations.get(n)[0];
-            charger.distance = AMapUtils.calculateLineDistance(new LatLng(charger.latitude, charger.longitude),new LatLng(Latitude, Longitude));
-            int total=Integer.parseInt(stotal);
-            charger.total=total;
-            int free=total;
-            for(int i=1;i<=total;i++){
-                int s=jsonObject.getInt("glzt"+i);
-                System.out.println(s);
-                if(s==1){
-                    free-=1;
-                };
-            }
-            charger.free=free;
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    chargers.add(charger);
-                }
-            });
 
-        }catch (Exception e){
-            e.printStackTrace();
-
-        }
-    }
-
-    private void sendRequestWithHttpURLConnectionSouth() {
-        textView.setText("");
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                HttpURLConnection connection = null;
-                BufferedReader reader = null;
-                getSite();
-                try {
-
-                    double longitude=Longitude;
-                    double latitude=Latitude;
-                    String sid = "lgGm0hCWH6ll";
-                    String urlst="https://xlr.xlvren.com/jweb_autocharge/position/listPosition.json?longitude="+longitude+"&latitude="+latitude+"&sid="+sid+"&showProprietary=1";
-                    System.out.println(urlst);
-                    URL url = new URL(urlst);
-
-                    //URL url = new URL("https://xlr.xlvren.com/jweb_autocharge/position/listPosition.json?longitude=120.687256&latitude=36.37475&sid=8Gsomxku5QrL&showProprietary=1");
-                    connection = (HttpURLConnection) url.openConnection();
-                    connection.setRequestMethod("GET");
-                    connection.setConnectTimeout(3000);
-                    connection.setReadTimeout(3000);
-                    //System.out.println("success1");
-                    InputStream in = connection.getInputStream();
-                    reader = new BufferedReader(new InputStreamReader(in));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    System.out.println(response.toString());
-                    pareSouthJSON(response.toString());
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    if (reader != null) {
-                        try {
-                            reader.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
-                }
-            }
-        }).start();
-    }
-    //解析2
+    //解析
     private void pareJSON(String jsonData){
         try {
             JSONObject jsonObject=new JSONObject(jsonData);
+
             JSONArray array=jsonObject.getJSONArray("data");
             //List<Charger> list=new ArrayList<>();
             int len=array.length();
@@ -308,7 +223,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             print();
 
         }catch (Exception e){
-            e.printStackTrace();
+            textView.setText(e.toString());
         }
         this.deactivate();
     }
