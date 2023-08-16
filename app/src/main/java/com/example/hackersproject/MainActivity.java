@@ -40,6 +40,9 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements LocationSource, AMapLocationListener{
 
+    private String serverIp="8.140.192.244";
+    private String serverPort="8081";
+    private String serverIndex="/json/chargers";
     private Button btn1,btn2;
     private double Longitude,Latitude;
     private TextView textView;
@@ -50,23 +53,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
     private LocationSource.OnLocationChangedListener mListener = null;//定位监听器
 
     public List<Charger> chargers=new ArrayList<>();
-    private List<double[]> locations=new ArrayList<>();
-    private void initlist(){
-        double baselo=120.685846;
-        double basela=36.374208;
-        for(int i=0;i<8;i++){
-            if(i==4){
-                baselo=120.684847;
-                basela=36.374924;
-
-            }
-            double[] pos=new double[2];
-
-            pos[0]= baselo+(double)i*0.00025;
-            pos[1]=basela;
-            locations.add(pos);
-        }
-    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -96,7 +82,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
 
             }
         }
-        initlist();
         try {
             AMapLocationClient.updatePrivacyShow(this, true, true);
             AMapLocationClient.updatePrivacyAgree(this, true);
@@ -109,8 +94,8 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             @Override
             public void onClick(View view) {
                 Toast.makeText(getApplicationContext(), "正在获取请稍后😁", Toast.LENGTH_LONG).show(); // 显示提示信息
-                sendRequestWithHttpURLConnectionNorth();
-                sendRequestWithHttpURLConnectionSouth();
+                sendRequestWithHttpURLConnection();
+
 
             }
         });
@@ -121,6 +106,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         mapActivity.chargers=chargers;
         startActivity(intent);
     }
+
     /*开启定位*/
     private void getSite() {
         //初始化定位
@@ -150,8 +136,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
 
     @Override
     public void onLocationChanged(AMapLocation aMapLocation) {
-
-
         if (aMapLocation != null) {
             if (aMapLocation.getErrorCode() == 0) {
                 //可在其中解析amapLocation获取相应内容。
@@ -168,7 +152,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         }
     }
 
-    private void sendRequestWithHttpURLConnectionNorth() {
+    private void sendRequestWithHttpURLConnection() {
         textView.setText("");
         new Thread(new Runnable() {
             @Override
@@ -176,34 +160,27 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 chargers=new ArrayList<>();
                 HttpURLConnection connection = null;
                 BufferedReader reader = null;
-                List<String> urls=new ArrayList<>();
-                urls.add("http://cdz.gpsserver.cn/ChargeCarSys?gtel=18000012097");
-                urls.add("http://cdz.gpsserver.cn/ChargeCarSys?gtel=18000012095");
-                urls.add("http://cdz.gpsserver.cn/ChargeCarSys?gtel=18000012099");
-                urls.add("http://cdz.gpsserver.cn/ChargeCarSys?gtel=18000012096");
-                urls.add("http://cdz.gpsserver.cn/ChargeCarSys?gtel=18000009531");
-                urls.add("http://cdz.gpsserver.cn/ChargeCarSys?gtel=18000009532");
-                urls.add("http://cdz.gpsserver.cn/ChargeCarSys?gtel=18000011046");
-                urls.add("http://cdz.gpsserver.cn/ChargeCarSys?gtel=18000011047");
+                String url_text = serverIp+':'+serverPort+serverIndex;
                 try {
-                    for(int i=0;i<8;i++) {
-                        System.out.println(urls.get(i));
-                        URL url = new URL(urls.get(i));
-                        connection = (HttpURLConnection) url.openConnection();
-                        connection.setRequestMethod("GET");
-                        connection.setConnectTimeout(3000);
-                        connection.setReadTimeout(3000);
-                        //System.out.println("success1");
-                        InputStream in = connection.getInputStream();
-                        reader = new BufferedReader(new InputStreamReader(in));
-                        StringBuilder response = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            response.append(line);
-                        }
 
-                        pareNorthJSON(response.toString(),i);
+                    System.out.println(url_text);
+                    URL url = new URL(url_text);
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 QIHU 360SE/10.0.2287.0");
+                    connection.setRequestProperty("contentType", "UTF-8");
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(3000);
+                    connection.setReadTimeout(3000);
+                    //System.out.println("success1");
+                    InputStream in = connection.getInputStream();
+                    reader = new BufferedReader(new InputStreamReader(in,"UTF-8"));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
                     }
+                    pareJSON(response.toString());
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
@@ -222,7 +199,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         }).start();
     }
     //解析 1
-    private void pareNorthJSON(String jsonData,int n){
+    private void pareJSON(String jsonData){
         try {
             //JSONObject jsonObject=new JSONObject(jsonData);
             JSONArray array1=new JSONArray(jsonData);
@@ -246,8 +223,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             }
             charger.free=free;
 
-
-
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -260,6 +235,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
 
         }
     }
+
     private void sendRequestWithHttpURLConnectionSouth() {
         textView.setText("");
         new Thread(new Runnable() {
@@ -272,8 +248,8 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
 
                     double longitude=Longitude;
                     double latitude=Latitude;
-
-                    String urlst="https://xlr.xlvren.com/jweb_autocharge/position/listPosition.json?longitude="+longitude+"&latitude="+latitude+"&sid=YPuZGo0vl6Rw&showProprietary=1";
+                    String sid = "lgGm0hCWH6ll";
+                    String urlst="https://xlr.xlvren.com/jweb_autocharge/position/listPosition.json?longitude="+longitude+"&latitude="+latitude+"&sid="+sid+"&showProprietary=1";
                     System.out.println(urlst);
                     URL url = new URL(urlst);
 
@@ -311,7 +287,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         }).start();
     }
     //解析2
-    private void pareSouthJSON(String jsonData){
+    private void pareJSON(String jsonData){
         try {
             JSONObject jsonObject=new JSONObject(jsonData);
             JSONArray array=jsonObject.getJSONArray("data");
@@ -320,14 +296,13 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             for(int i=0;i<len;i++){
                 JSONObject jsoni=new JSONObject(array.get(i).toString());
                 Charger charger=new Charger();
-                charger.name=jsoni.getString("stationName");
-                charger.distance=(double)jsoni.get("distance");
-                charger.total=jsoni.getInt("totalPile");
-                charger.free= jsoni.getInt("freePile");
+                charger.name=jsoni.getString("name");
+                charger.total=jsoni.getInt("total");
+                charger.free= jsoni.getInt("free");
                 charger.longitude=jsoni.getDouble("longitude");
                 charger.latitude=jsoni.getDouble("latitude");
+                charger.distance=AMapUtils.calculateLineDistance(new LatLng(charger.latitude, charger.longitude),new LatLng(Latitude, Longitude));
                 chargers.add(charger);
-
 
             }
             print();
