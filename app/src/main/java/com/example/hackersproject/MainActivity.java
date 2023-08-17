@@ -1,17 +1,25 @@
 package com.example.hackersproject;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Bundle;
 
+import android.os.Handler;
+
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -34,34 +42,171 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+
+import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
 
+
 public class MainActivity extends AppCompatActivity implements LocationSource, AMapLocationListener{
 
-    private String serverIp="8.140.192.244";
+    //private String serverIp="8.140.192.244";
+    private String serverIp="192.168.1.107";
     private String serverPort="8081";
     private String serverIndex="/json/chargers";
+    private String checkIndex="/json/chargers";
+    private String downloadIndex="/json/chargers";
     private Button btn1,btn2;
+    private int needUpdate=0;
+
+    private LocalTime dataTime,localTime;
+    private long minute0;
     private double Longitude,Latitude;
-    private TextView textView;
+    private TextView textView,timeView;
     private LocationManager locationManager;
-    private String provider;
     private AMapLocationClient mLocationClient;//定位发起端
     private AMapLocationClientOption mLocationOption = new AMapLocationClientOption();//定位参数
     private LocationSource.OnLocationChangedListener mListener = null;//定位监听器
-
+    AlertDialog dialogAbout = new AlertDialog.Builder(this)
+            .setTitle("About")    //设置标题
+            .setMessage("开发者：曦微（QQ 2273805195）")  //设置提醒的信息
+            .setIcon(R.mipmap.appicon)    //设置图标
+            .setPositiveButton("已知晓",null) //添加确定按钮
+            //.setNegativeButton("取消",null) //添加取消按钮
+            .create();
+    AlertDialog dialogUpdate = new AlertDialog.Builder(this)
+            .setTitle("新版本(非强制)")    //设置标题
+            .setMessage("新版本发布，可以选择更新✌️✌️")  //设置提醒的信息
+            .setIcon(R.mipmap.appicon)    //设置图标
+            .setPositiveButton("更新",new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    download();
+                }
+            }) //添加确定按钮
+            .setNegativeButton("取消",null) //添加取消按钮
+            .create();
+    AlertDialog dialogUpdateForce = new AlertDialog.Builder(this)
+            .setTitle("新版本(强制)")    //设置标题
+            .setMessage("新版本发布，涉及到后端数据变化，为强制更新🙏🙏")  //设置提醒的信息
+            .setIcon(R.mipmap.appicon)    //设置图标
+            .setPositiveButton("更新",null) //添加确定按钮
+            .create();
+    private Handler handler = new Handler();
+    private Runnable runnable = new Runnable() {
+        public void run () {
+            handler.postDelayed(this,1000); //每隔0.5秒刷新一次
+            //在这里更新数据
+            if(dataTime != null){
+                localTime=LocalTime.now();
+                long dura =Duration.between(dataTime,localTime).toMinutes();
+                if(minute0 != dura) {
+                    minute0 = dura;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            timeView.setText((int)dura + "分钟");
+                        }
+                    });
+                }
+            }
+        }
+    };
     public List<Charger> chargers=new ArrayList<>();
+    @SuppressLint("HandlerLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         textView = findViewById(R.id.textView);
+        timeView = findViewById(R.id.timeView);
         btn1 = findViewById(R.id.button);
         btn2 = findViewById(R.id.button3);
-        //判断权限
+        dataTime = null;
+        getPermission();
+        getSite();
+        // 更加计时
+        handler.post(runnable);//启动定时器
+        btn1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast.makeText(getApplicationContext(), "正在获取请稍后😁", Toast.LENGTH_LONG).show(); // 显示提示信息
+                sendRequestWithHttpURLConnection();
+            }
+        });
+    }
+    @Override
+    public boolean onCreateOptionsMenu(@NonNull Menu menu) {
+        //第二个参数表示此menu的id值，在onOptionsItemSelected方法中通过id值判断是哪个menu被点击了
+        menu.add(Menu.NONE, 1, 1, "检查更新");
+        menu.add(Menu.NONE, 2, 2, "关于");
+        return true;
+    }
+    //点击实现的操作
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item){
+        switch (item.getItemId()){
+            case 1:
+                Toast.makeText(getApplicationContext(),"菜单1",Toast.LENGTH_SHORT).show();
+                break;
+            case 2:
+                dialogAbout.show();
+                break;
+        }
+        return true;
+    }
 
+    // 检查更新
+    private void checkUpdate(){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                chargers = new ArrayList<>();
+                HttpURLConnection connection = null;
+                String url_text = "http://" + serverIp + ':' + serverPort + checkIndex;
+                try {
+                    System.out.println(url_text);
+                    URL url = new URL(url_text);
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 QIHU 360SE/10.0.2287.0");
+                    connection.setRequestProperty("contentType", "UTF-8");
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(3000);
+                    connection.setReadTimeout(3000);
+                    InputStream in = connection.getInputStream();
+                    byte[] b = new byte[1];
+                    in.read(b);
+                    needUpdate = (int)b[0];
+                    if(needUpdate == 1){
+                        dialogUpdate.show();
+                    }else if(needUpdate == 2){
+                        dialogUpdateForce.show();
+                    }else{
+                        Toast.makeText(getApplicationContext(), "已是最新版本😊", Toast.LENGTH_SHORT).show();
+                }
+
+                } catch (Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            textView.setText(e.toString());
+                        }
+                    });
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
+                }
+            }
+        }).start();
+    }
+    public void download(){
+        Toast.makeText(this, "正在下载请稍后😁", Toast.LENGTH_LONG).show();
+    }
+    //获取权限
+    private void getPermission(){
         //判断权限
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             //请求权限
@@ -73,13 +218,10 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             //获取所有可用的位置提供器
             List<String> providerList = locationManager.getProviders(true);
             if (providerList.contains(LocationManager.NETWORK_PROVIDER)) {
-                provider = LocationManager.NETWORK_PROVIDER;
             } else if (providerList.contains(LocationManager.GPS_PROVIDER)) {
-                provider = LocationManager.GPS_PROVIDER;
             } else {
                 //当没有可用的位置提供器时，弹出Toast提示用户
                 Toast.makeText(this, "No Location provider to use", Toast.LENGTH_SHORT).show();
-
             }
         }
         try {
@@ -87,25 +229,18 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             AMapLocationClient.updatePrivacyAgree(this, true);
             mLocationClient = new AMapLocationClient(getApplicationContext());
         } catch (Exception e) {
-            e.printStackTrace();
+            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
         }
-        getSite();
-        btn1.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Toast.makeText(getApplicationContext(), "正在获取请稍后😁", Toast.LENGTH_LONG).show(); // 显示提示信息
-                sendRequestWithHttpURLConnection();
-
-
-            }
-        });
     }
+
     public void jump(View v) {
         Intent intent = new Intent();
         intent.setClass(MainActivity.this, mapActivity.class);
         mapActivity.chargers=chargers;
         startActivity(intent);
     }
+
+
 
     /*开启定位*/
     private void getSite() {
@@ -162,7 +297,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 BufferedReader reader = null;
                 String url_text = "http://"+serverIp+':'+serverPort+serverIndex;
                 try {
-
                     System.out.println(url_text);
                     URL url = new URL(url_text);
                     connection = (HttpURLConnection) url.openConnection();
@@ -182,7 +316,12 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                     pareJSON(response.toString());
 
                 } catch (Exception e) {
-                    textView.setText(e.toString());
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            textView.setText(e.toString());
+                        }
+                    });
                 } finally {
                     if (reader != null) {
                         try {
@@ -201,9 +340,12 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
 
 
     //解析
+
     private void pareJSON(String jsonData){
         try {
             JSONObject jsonObject=new JSONObject(jsonData);
+            JSONObject jsonTime = jsonObject.getJSONObject("time");
+            dataTime = LocalTime.of(jsonTime.getInt("hour"),jsonTime.getInt("minute"),jsonTime.getInt("second"));
 
             JSONArray array=jsonObject.getJSONArray("data");
             //List<Charger> list=new ArrayList<>();
@@ -223,12 +365,17 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             print();
 
         }catch (Exception e){
-            textView.setText(e.toString());
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    textView.setText(e.toString());
+                }
+            });
         }
         this.deactivate();
     }
 
-    public void print(){
+    private void print(){
         Charger temp;
         for(int i=0;i<chargers.size();i++){
             int mindex=i;
@@ -244,6 +391,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                //timeView.setText();
                 for(int i = 0; i< chargers.size(); i++){
                     if(chargers.get(i).free >0) {
                         StringBuilder S = new StringBuilder();
@@ -259,7 +407,6 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             }
         });
     }
-
     //激活定位
     @Override
     public void activate(OnLocationChangedListener listener) {
@@ -294,6 +441,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
+        handler.removeCallbacks(runnable);//取消定时器
     }
+
 }

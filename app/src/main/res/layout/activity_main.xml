@@ -10,7 +10,7 @@
         android:id="@+id/button"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="104dp"
+        android:layout_marginTop="65dp"
         android:layout_marginBottom="579dp"
         android:text="获取当前空闲充电桩"
         android:textAppearance="@style/TextAppearance.AppCompat.Body1"
@@ -22,6 +22,7 @@
         app:rippleColor="#3F51B5" />
 
     <ScrollView
+        android:id="@+id/scrollView2"
         android:layout_width="380dp"
         android:layout_height="508dp"
         android:layout_marginTop="222dp"
@@ -58,6 +59,42 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/timeView"
+        android:layout_width="94dp"
+        android:layout_height="33dp"
+        android:layout_marginStart="1dp"
+        android:layout_marginTop="31dp"
+        android:layout_marginEnd="47dp"
+        android:layout_marginBottom="19dp"
+        android:text="N分钟"
+        android:textAlignment="textStart"
+        android:textColor="#4EA81D"
+        android:textDirection="inherit"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/scrollView2"
+        app:layout_constraintEnd_toStartOf="@+id/button3"
+        app:layout_constraintStart_toEndOf="@+id/timetext"
+        app:layout_constraintTop_toBottomOf="@+id/button" />
+
+    <TextView
+        android:id="@+id/timetext"
+        android:layout_width="141dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="1dp"
+        android:layout_marginBottom="19dp"
+        android:text="距最新数据已过:"
+        android:textAlignment="center"
+        android:textColor="#E50BF4"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/scrollView2"
+        app:layout_constraintEnd_toStartOf="@+id/timeView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/button" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

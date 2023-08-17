@@ -55,12 +55,13 @@ public class mapActivity extends AppCompatActivity implements LocationSource, AM
             e.printStackTrace();
         }
         MyLocationStyle myLocationStyle = new MyLocationStyle();//初始化定位蓝点样式类
+
         //连续定位模式、且将视角移动到地图中心点，定位点依照设备方向旋转，并且会跟随设备移动。
         // （1秒1次定位）如果不设置myLocationType，默认也会执行此种模式。
         //myLocationStyle.myLocationType();
         myLocationStyle.interval(2000); //连续定位模式下的定位间隔（只在连续模式下生效）
         myLocationStyle.showMyLocation(true);
-
+        myLocationStyle.myLocationType(MyLocationStyle.LOCATION_TYPE_FOLLOW_NO_CENTER);
         aMap.setMyLocationStyle(myLocationStyle);
         //设置显示定位按钮 并且可以点击
         UiSettings settings = aMap.getUiSettings();
