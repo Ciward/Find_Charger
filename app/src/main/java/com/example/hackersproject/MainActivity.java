@@ -13,6 +13,7 @@ import android.content.Intent;
 
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
 
 import android.os.Handler;
@@ -52,12 +53,12 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements LocationSource, AMapLocationListener{
 
-    //private String serverIp="8.140.192.244";
-    private String serverIp="192.168.1.107";
+    private String serverIp="8.140.192.244";
+    //private String serverIp="192.168.1.108";
     private String serverPort="8081";
     private String serverIndex="/json/chargers";
-    private String checkIndex="/json/chargers";
-    private String downloadIndex="/json/chargers";
+    private String checkIndex="/checkUpdate";
+    private String downloadIndex="/download/update/app-release.apk";
     private Button btn1,btn2;
     private int needUpdate=0;
 
@@ -69,31 +70,9 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
     private AMapLocationClient mLocationClient;//定位发起端
     private AMapLocationClientOption mLocationOption = new AMapLocationClientOption();//定位参数
     private LocationSource.OnLocationChangedListener mListener = null;//定位监听器
-    AlertDialog dialogAbout = new AlertDialog.Builder(this)
-            .setTitle("About")    //设置标题
-            .setMessage("开发者：曦微（QQ 2273805195）")  //设置提醒的信息
-            .setIcon(R.mipmap.appicon)    //设置图标
-            .setPositiveButton("已知晓",null) //添加确定按钮
-            //.setNegativeButton("取消",null) //添加取消按钮
-            .create();
-    AlertDialog dialogUpdate = new AlertDialog.Builder(this)
-            .setTitle("新版本(非强制)")    //设置标题
-            .setMessage("新版本发布，可以选择更新✌️✌️")  //设置提醒的信息
-            .setIcon(R.mipmap.appicon)    //设置图标
-            .setPositiveButton("更新",new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    download();
-                }
-            }) //添加确定按钮
-            .setNegativeButton("取消",null) //添加取消按钮
-            .create();
-    AlertDialog dialogUpdateForce = new AlertDialog.Builder(this)
-            .setTitle("新版本(强制)")    //设置标题
-            .setMessage("新版本发布，涉及到后端数据变化，为强制更新🙏🙏")  //设置提醒的信息
-            .setIcon(R.mipmap.appicon)    //设置图标
-            .setPositiveButton("更新",null) //添加确定按钮
-            .create();
+    AlertDialog dialogAbout;
+    AlertDialog dialogUpdate;
+    AlertDialog dialogUpdateForce;
     private Handler handler = new Handler();
     private Runnable runnable = new Runnable() {
         public void run () {
@@ -104,12 +83,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
                 long dura =Duration.between(dataTime,localTime).toMinutes();
                 if(minute0 != dura) {
                     minute0 = dura;
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            timeView.setText((int)dura + "分钟");
-                        }
-                    });
+                    runOnUiThread(() -> timeView.setText((int)minute0 + "分钟"));
                 }
             }
         }
@@ -125,16 +99,34 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
         btn1 = findViewById(R.id.button);
         btn2 = findViewById(R.id.button3);
         dataTime = null;
+        dialogAbout = new AlertDialog.Builder(this)
+                .setTitle("About")    //设置标题
+                .setMessage("开发者：曦微（QQ 2273805195）")  //设置提醒的信息
+                .setIcon(R.mipmap.appicon)    //设置图标
+                .setPositiveButton("已知晓",null) //添加确定按钮
+                //.setNegativeButton("取消",null) //添加取消按钮
+                .create();
+        dialogUpdate = new AlertDialog.Builder(this)
+                .setTitle("新版本(非强制)")    //设置标题
+                .setMessage("新版本发布，可以选择更新✌️✌️")  //设置提醒的信息
+                .setIcon(R.mipmap.appicon)    //设置图标
+                .setPositiveButton("更新", (dialog, which) -> download()) //添加确定按钮
+                .setNegativeButton("取消",null) //添加取消按钮
+                .create();
+        dialogUpdateForce = new AlertDialog.Builder(this)
+                .setTitle("新版本(强制)")    //设置标题
+                .setMessage("新版本发布，涉及到后端数据变化，旧版本可能无法使用，为强制更新🙏🙏")  //设置提醒的信息
+                .setIcon(R.mipmap.appicon)    //设置图标
+                .setPositiveButton("更新",(dialog, which) -> download()) //添加确定按钮
+                .create();
+        checkUpdate();
         getPermission();
         getSite();
         // 更加计时
         handler.post(runnable);//启动定时器
-        btn1.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Toast.makeText(getApplicationContext(), "正在获取请稍后😁", Toast.LENGTH_LONG).show(); // 显示提示信息
-                sendRequestWithHttpURLConnection();
-            }
+        btn1.setOnClickListener(view -> {
+            Toast.makeText(getApplicationContext(), "正在获取请稍后😁", Toast.LENGTH_LONG).show(); // 显示提示信息
+            sendRequestWithHttpURLConnection();
         });
     }
     @Override
@@ -149,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
     public boolean onOptionsItemSelected(@NonNull MenuItem item){
         switch (item.getItemId()){
             case 1:
-                Toast.makeText(getApplicationContext(),"菜单1",Toast.LENGTH_SHORT).show();
+                checkUpdate();
                 break;
             case 2:
                 dialogAbout.show();
@@ -160,50 +152,46 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
 
     // 检查更新
     private void checkUpdate(){
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                chargers = new ArrayList<>();
-                HttpURLConnection connection = null;
-                String url_text = "http://" + serverIp + ':' + serverPort + checkIndex;
-                try {
-                    System.out.println(url_text);
-                    URL url = new URL(url_text);
-                    connection = (HttpURLConnection) url.openConnection();
-                    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 QIHU 360SE/10.0.2287.0");
-                    connection.setRequestProperty("contentType", "UTF-8");
-                    connection.setRequestMethod("GET");
-                    connection.setConnectTimeout(3000);
-                    connection.setReadTimeout(3000);
-                    InputStream in = connection.getInputStream();
-                    byte[] b = new byte[1];
-                    in.read(b);
-                    needUpdate = (int)b[0];
-                    if(needUpdate == 1){
-                        dialogUpdate.show();
-                    }else if(needUpdate == 2){
-                        dialogUpdateForce.show();
-                    }else{
-                        Toast.makeText(getApplicationContext(), "已是最新版本😊", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            chargers = new ArrayList<>();
+            HttpURLConnection connection = null;
+            BufferedReader reader =null;
+            String url_text = "http://" + serverIp + ':' + serverPort + checkIndex;
+            try {
+                System.out.println(url_text);
+                URL url = new URL(url_text);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 QIHU 360SE/10.0.2287.0");
+                connection.setRequestProperty("contentType", "UTF-8");
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(3000);
+                connection.setReadTimeout(3000);
+                InputStream in = connection.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(in,"UTF-8"));
+                needUpdate = Integer.valueOf(reader.readLine());
+                if(needUpdate == 1){
+                    runOnUiThread(() -> dialogUpdate.show());
+                }else if(needUpdate == 2){
+                    runOnUiThread(() -> dialogUpdateForce.show());
+                }else{
+                    runOnUiThread(() -> Toast.makeText(getApplicationContext(), "已是最新版本😊", Toast.LENGTH_SHORT).show());
                 }
-
-                } catch (Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            textView.setText(e.toString());
-                        }
-                    });
-                } finally {
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> textView.setText(e.toString()));
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
                 }
             }
         }).start();
     }
     public void download(){
         Toast.makeText(this, "正在下载请稍后😁", Toast.LENGTH_LONG).show();
+        Uri uri = Uri.parse("http://"+serverIp+":80"+downloadIndex);    //设置跳转的网站
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        startActivity(intent);
+
     }
     //获取权限
     private void getPermission(){
@@ -289,50 +277,42 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
 
     private void sendRequestWithHttpURLConnection() {
         textView.setText("");
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                chargers=new ArrayList<>();
-                HttpURLConnection connection = null;
-                BufferedReader reader = null;
-                String url_text = "http://"+serverIp+':'+serverPort+serverIndex;
-                try {
-                    System.out.println(url_text);
-                    URL url = new URL(url_text);
-                    connection = (HttpURLConnection) url.openConnection();
-                    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 QIHU 360SE/10.0.2287.0");
-                    connection.setRequestProperty("contentType", "UTF-8");
-                    connection.setRequestMethod("GET");
-                    connection.setConnectTimeout(3000);
-                    connection.setReadTimeout(3000);
-                    //System.out.println("success1");
-                    InputStream in = connection.getInputStream();
-                    reader = new BufferedReader(new InputStreamReader(in,"UTF-8"));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    pareJSON(response.toString());
+        new Thread(() -> {
+            chargers=new ArrayList<>();
+            HttpURLConnection connection = null;
+            BufferedReader reader = null;
+            String url_text = "http://"+serverIp+':'+serverPort+serverIndex;
+            try {
+                System.out.println(url_text);
+                URL url = new URL(url_text);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36 QIHU 360SE/10.0.2287.0");
+                connection.setRequestProperty("contentType", "UTF-8");
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(3000);
+                connection.setReadTimeout(3000);
+                //System.out.println("success1");
+                InputStream in = connection.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(in,"UTF-8"));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                pareJSON(response.toString());
 
-                } catch (Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            textView.setText(e.toString());
-                        }
-                    });
-                } finally {
-                    if (reader != null) {
-                        try {
-                            reader.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+            } catch (Exception e) {
+                runOnUiThread(() -> textView.setText(e.toString()));
+            } finally {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                    if (connection != null) {
-                        connection.disconnect();
-                    }
+                }
+                if (connection != null) {
+                    connection.disconnect();
                 }
             }
         }).start();
@@ -365,12 +345,7 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             print();
 
         }catch (Exception e){
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    textView.setText(e.toString());
-                }
-            });
+            runOnUiThread(() -> textView.setText(e.toString()));
         }
         this.deactivate();
     }
@@ -388,23 +363,20 @@ public class MainActivity extends AppCompatActivity implements LocationSource, A
             chargers.set(mindex,chargers.get(i));
             chargers.set(i,temp);
         }
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                //timeView.setText();
-                for(int i = 0; i< chargers.size(); i++){
-                    if(chargers.get(i).free >0) {
-                        StringBuilder S = new StringBuilder();
-                        S.append("地址:  " + chargers.get(i).name + "\n");
-                        S.append("总插口数:  " + chargers.get(i).total + "\n");
-                        S.append("剩余插口数:   " + chargers.get(i).free + "\n");
-                        if (chargers.get(i).distance != -1)
-                            S.append("距离: " + String.format("%.2f", chargers.get(i).distance) + " m\n");
-                        textView.append(S);
-                    }
+        runOnUiThread(() -> {
+            //timeView.setText();
+            for(int i = 0; i< chargers.size(); i++){
+                if(chargers.get(i).free >0) {
+                    StringBuilder S = new StringBuilder();
+                    S.append("地址:  " + chargers.get(i).name + "\n");
+                    S.append("总插口数:  " + chargers.get(i).total + "\n");
+                    S.append("剩余插口数:   " + chargers.get(i).free + "\n");
+                    if (chargers.get(i).distance != -1)
+                        S.append("距离: " + String.format("%.2f", chargers.get(i).distance) + " m\n");
+                    textView.append(S);
                 }
-
             }
+
         });
     }
     //激活定位
